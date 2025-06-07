@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: net-app-qt-deployment
+  labels:
+    app: net-app-qt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: net-app-qt
+  template:
+    metadata:
+      labels:
+        app: net-app-qt
+    spec:
+      containers:
+        - name: net-app-qt
+          image: docker.io/library/net-app-qt:new
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: net-app-qt-service
+  labels:
+    app: net-app-qt
+spec:
+  selector:
+    app: net-app-qt
+  ports:
+    - protocol: TCP
+      port: 8088         # Port exposed by the service
+      targetPort: 8080   # Port on the pod container
+  type: ClusterIP
