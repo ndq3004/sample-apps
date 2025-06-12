@@ -1,0 +1,50 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+
+exporters:
+  kafka/logs:
+    brokers: ["kafka-logs:9093"]
+    topic: otel-logs
+    # encoding: json
+    protocol_version: 2.0.0
+    metadata:
+      full: true
+
+  kafka/traces:
+    brokers: ["kafka-logs:9093"]
+    topic: otel-traces
+    encoding: otlp_proto
+    protocol_version: 2.0.0
+    metadata:
+      full: true
+
+  kafka/metrics:
+    brokers: ["kafka-logs:9093"]
+    topic: otel-metrics
+    encoding: otlp_proto
+    protocol_version: 2.0.0
+    metadata:
+      full: true
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [kafka/logs]
+
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [kafka/traces]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [kafka/metrics]

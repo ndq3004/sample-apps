@@ -1,0 +1,29 @@
+version: '3.4'
+
+services:
+  coffeeshop.api:
+    image: quannguyen3004/net-cof-app:dev
+    container_name: api
+    # build:
+    #   context: .
+    #   dockerfile: CoffeeShop.Api/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      # - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://coffeeshop.dashboard:18888
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    networks:
+     - otel
+
+  coffeeshop.dashboard:
+    image: mcr.microsoft.com/dotnet/nightly/aspire-dashboard:latest
+    container_name: dashboard
+    ports:
+     - 18888:18888
+    networks:
+     - otel
+
+networks:
+  otel:
+    external: true

@@ -4,23 +4,28 @@ services:
   # ------------------------------
   # Zookeeper for Kafka A (Business)
   # ------------------------------
-  zookeeper-business:
-    image: confluentinc/cp-zookeeper:7.6.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+  # zookeeper-business:
+  #   image: confluentinc/cp-zookeeper:7.6.0
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
 
-  kafka-business:
-    image: confluentinc/cp-kafka:7.6.0
-    depends_on:
-      - zookeeper-business
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-business:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  # kafka-business:
+  #   image: confluentinc/cp-kafka:7.6.0
+  #   depends_on:
+  #     - zookeeper-business
+  #   ports:
+  #     - "9092:9092"
+  #     - "29092:29092"
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper-business:2181
+  #     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka-business:29092
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
 
   # ------------------------------
   # Zookeeper for Kafka B (Logging)
@@ -31,31 +36,42 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2182
       ZOOKEEPER_TICK_TIME: 2000
 
-  kafka-logs:
+  kafka:
     image: confluentinc/cp-kafka:7.6.0
     depends_on:
       - zookeeper-logs
     ports:
       - "9093:9093"
     environment:
-      KAFKA_BROKER_ID: 2
+      KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-logs:2182
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # KAFKA_BROKER_ID: 1
+      # KAFKA_ZOOKEEPER_CONNECT: zookeeper-logs:2182
+      # KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093,PLAINTEXT_INTERNAL://0.0.0.0:29093
+      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093,PLAINTEXT_INTERNAL://kafka-logs:29093
+      # KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      # KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      # KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   # ------------------------------
   # OpenTelemetry Collector
   # ------------------------------
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: ["--config=/etc/otel-collector-config-log.yaml"]
+    container_name: otel-collector
     volumes:
-      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./otel-collector-config-log.yaml:/etc/otel-collector-config-log.yaml
     ports:
       - "4317:4317" # OTLP gRPC
       - "4318:4318" # OTLP HTTP
     depends_on:
-      - kafka-logs
+      - kafka
+    # networks:
+    #  - otel
 
   # ------------------------------
   # Kafka UI for visibility
@@ -64,8 +80,56 @@ services:
     image: provectuslabs/kafka-ui:latest
     ports:
       - "8080:8080"
+    depends_on:
+      - kafka
     environment:
-      KAFKA_CLUSTERS_0_NAME: business
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-business:9092
-      KAFKA_CLUSTERS_1_NAME: logging
-      KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: kafka-logs:9093
+      # KAFKA_CLUSTERS_0_NAME: business
+      # KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-business:29092
+      KAFKA_CLUSTERS_0_NAME: logging
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+
+  coffeeshop.api:
+    image: quannguyen3004/net-cof-app:dev123
+    container_name: api
+    # build:
+    #   context: .
+    #   dockerfile: CoffeeShop.Api/Dockerfile
+    ports:
+      - "5000:5000"
+    depends_on:
+      - otel-collector
+      - coffeeshop.dashboard
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      # - OTEL_EXPORTER_OTLP_ENDPOINT=http://coffeeshop.dashboard:18889
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    # networks:
+    #  - otel
+  
+  coffeeshop.api2:
+    image: quannguyen3004/net-cof-app:dev123
+    container_name: api2
+    # build:
+    #   context: .
+    #   dockerfile: CoffeeShop.Api/Dockerfile
+    ports:
+      - "5002:5000"
+    depends_on:
+      - otel-collector
+      - coffeeshop.dashboard
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+
+  coffeeshop.dashboard:
+    image: mcr.microsoft.com/dotnet/nightly/aspire-dashboard:latest
+    container_name: dashboard
+    ports:
+     - 18888:18888
+    # networks:
+    #  - otel
+
+networks:
+  default:
+    name: otel
+    driver: bridge

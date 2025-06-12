@@ -1,0 +1,22 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+      grpc:
+
+exporters:
+  kafka:
+    protocol_version: 2.0.0
+    brokers:
+      - kafka:9093
+    topic: dotnet-logs
+    encoding: raw
+
+  debug:  # Replaces deprecated logging exporter
+    verbosity: detailed  # Options: normal | detailed | basic
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [debug, kafka]

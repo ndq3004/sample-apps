@@ -1,0 +1,16 @@
+version: '3.4'
+
+services:
+  coffeeshop.api:
+    image: ${DOCKER_REGISTRY-}coffeeshop.api
+    container_name: api
+    build:
+      context: .
+      dockerfile: CoffeeShop.Api/Dockerfile
+    ports:
+      - 8081:8081
+    networks:
+     - otel
+
+networks:
+  otel:

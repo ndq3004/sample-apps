@@ -1,0 +1,19 @@
+{
+  "resourceLogs": [
+    {
+      "resource": {},
+      "scopeLogs": [
+        {
+          "scope": {},
+          "logRecords": [
+            {
+              "body": "Test log entry",
+              "attributes": {},
+              "timestamp": "1719930678000000000"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
