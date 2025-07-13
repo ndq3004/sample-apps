@@ -1,5 +1,4 @@
 curl localhost:5000
-curl localhost:5002
 
 # curl -X POST http://localhost:4318/v1/logs -H "Content-Type: application/json" -d '{}'
 

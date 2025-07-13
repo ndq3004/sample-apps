@@ -9,41 +9,48 @@ using Web.Api.Database;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
-// builder.Logging.AddConsole();
+builder.Logging.AddConsole();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<CoffeeShopDbContext>(options => options.UseInMemoryDatabase("CoffeeShop"));
 
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService(DiagnosticsConfig.ServiceName))
-    .WithMetrics(metrics =>
-    {
-        metrics
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation();
+// builder.Services.AddOpenTelemetry()
+//     .ConfigureResource(resource => resource.AddService(DiagnosticsConfig.ServiceName))
+//     .WithMetrics(metrics =>
+//     {
+//         metrics
+//             .AddAspNetCoreInstrumentation()
+//             .AddHttpClientInstrumentation();
 
-        metrics.AddMeter(DiagnosticsConfig.Meter.Name);
+//         metrics.AddMeter(DiagnosticsConfig.Meter.Name);
 
-        metrics.AddOtlpExporter();
-    })
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddEntityFrameworkCoreInstrumentation();
+//         metrics.AddOtlpExporter();
+//     })
+//     .WithTracing(tracing =>
+//     {
+//         tracing
+//             .AddAspNetCoreInstrumentation()
+//             .AddHttpClientInstrumentation()
+//             .AddEntityFrameworkCoreInstrumentation();
 
-        tracing.AddOtlpExporter();
-    });
+//         tracing.AddOtlpExporter();
+//     });
 
-builder.Logging.AddOpenTelemetry(logging =>
+builder.Logging.AddOpenTelemetry(options =>
 {
-    logging.IncludeScopes = true;
-    logging.ParseStateValues = true;
-    logging.AddOtlpExporter(
-    opts => opts.Endpoint = new Uri("http://localhost:4318"));
+    options.IncludeScopes = true;
+    options.ParseStateValues = true;
+    options.IncludeFormattedMessage = true;
+    // Export logs to OTLP endpoint (OpenTelemetry Collector)
+    options.SetResourceBuilder(
+        OpenTelemetry.Resources.ResourceBuilder.CreateDefault()
+            .AddService("MyDotNetApp"));
+    options.AddOtlpExporter(otlpOptions =>
+    {
+        otlpOptions.Endpoint = new Uri("http://localhost:4317"); // Collector endpoint
+    });
     
 });
 
